@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { TaskStats } from '../types'
-import { getTaskStats } from '../api'
+import { getTaskStats } from '../services'
 
 export default function Dashboard() {
   const [stats, setStats] = useState<TaskStats | null>(null)
@@ -121,25 +121,6 @@ export default function Dashboard() {
             </div>
           </div>
         </Link>
-      </div>
-
-      {/* System Info */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">⚡ System Performance</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-green-600">0.5s</p>
-            <p className="text-sm text-gray-600">Startup Time</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-blue-600">50MB</p>
-            <p className="text-sm text-gray-600">Memory Usage</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-purple-600">Quarkus</p>
-            <p className="text-sm text-gray-600">Supersonic Framework</p>
-          </div>
-        </div>
       </div>
     </div>
   )

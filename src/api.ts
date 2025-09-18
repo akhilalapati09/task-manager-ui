@@ -49,3 +49,13 @@ export const createProject = async (project: Omit<Project, 'id' | 'createdAt' | 
 export const deleteProject = async (id: number): Promise<void> => {
   await api.delete(`/projects/${id}`)
 }
+
+export const createTeamMember = async (member: Omit<TeamMember, 'id' | 'createdAt' | 'updatedAt'>): Promise<TeamMember> => {
+  const response = await api.post('/team', member)
+   return response.data
+}
+
+export const getTeamMember = async (): Promise<TeamMember[]> => {
+  const response = await api.get('/team-members', member)
+   return response.data
+}

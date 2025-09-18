@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import Dashboard from './components/Dashboard'
 import TasksPage from './components/TasksPage'
 import ProjectsPage from './components/ProjectsPage'
-import TeamPage from './components/TeamPage'
+import TeamMembersPage from './components/TeamMembersPage'
 import SettingsPage from './components/SettingsPage'
 
 function Navigation() {
@@ -13,7 +13,7 @@ function Navigation() {
     { path: '/', name: 'Dashboard', icon: '📊' },
     { path: '/tasks', name: 'Tasks', icon: '📋' },
     { path: '/projects', name: 'Projects', icon: '📁' },
-    { path: '/team', name: 'Team', icon: '👥' }
+    { path: '/team', name: 'Team Members', icon: '👥' }
   ]
 
   return (
@@ -41,9 +41,6 @@ function Navigation() {
           </div>
           
           <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-500">
-              Quarkus + React + PostgreSQL
-            </div>
             <Link
               to="/settings"
               className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -72,7 +69,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/team" element={<TeamPage />} />
+            <Route path="/team" element={<TeamMembersPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>

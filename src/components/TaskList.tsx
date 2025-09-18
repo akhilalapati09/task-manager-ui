@@ -1,5 +1,5 @@
 import { Task } from '../types'
-import { updateTaskStatus, deleteTask } from '../api'
+import { updateTaskStatus, deleteTask } from '../services'
 
 interface TaskListProps {
   tasks: Task[]

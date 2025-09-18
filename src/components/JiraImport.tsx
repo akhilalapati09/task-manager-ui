@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createTask } from '../api'
+import { createTask } from '../services'
 
 interface JiraImportProps {
   onClose: () => void

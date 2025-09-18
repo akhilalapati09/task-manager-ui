@@ -2,15 +2,20 @@ import { useState, useEffect } from 'react'
 import TaskList from './TaskList'
 import TaskForm from './TaskForm'
 import JiraImport from './JiraImport'
-import { Task } from '../types'
-import { getTasks } from '../api'
+import TaskCard from './TaskCard'
+import { Task, Project } from '../types'
+import { getTasks, updateTask, deleteTask, getProjects } from '../services'
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [showJiraImport, setShowJiraImport] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
   // Filters and views
   const [groupBy, setGroupBy] = useState<'none' | 'status' | 'priority' | 'assignee'>('none')
@@ -20,7 +25,10 @@ export default function TasksPage() {
   const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
-    loadTasks()
+    const loadData = async () => {
+      await Promise.all([loadTasks(), loadProjects()])
+    }
+    loadData()
   }, [])
 
   useEffect(() => {
@@ -33,6 +41,15 @@ export default function TasksPage() {
       setTasks(tasksData)
     } catch (error) {
       console.error('Failed to load tasks:', error)
+    }
+  }
+
+  const loadProjects = async () => {
+    try {
+      const projectsData = await getProjects()
+      setProjects(projectsData)
+    } catch (error) {
+      console.error('Failed to load projects:', error)
     } finally {
       setLoading(false)
     }
@@ -82,9 +99,55 @@ export default function TasksPage() {
     }, {})
   }
 
-  const handleTaskCreated = () => {
+  const resetForm = () => {
+    setEditingTask(null)
+    setError(null)
+  }
+
+  const handleCloseModal = () => {
+    resetForm()
+    setShowForm(false)
+  }
+
+  const handleTaskSaved = () => {
+    resetForm()
     setShowForm(false)
     loadTasks()
+  }
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task)
+    setShowForm(true)
+  }
+
+  const handleNewTask = () => {
+    resetForm()
+    setShowForm(true)
+  }
+
+  const handleStatusChange = async (task: Task, newStatus: string) => {
+    try {
+      setIsSubmitting(true)
+      await updateTask(task.id, { ...task, status: newStatus })
+      loadTasks()
+    } catch (error) {
+      console.error('Failed to update task status:', error)
+      setError('Failed to update task status. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteTask = async (e: React.MouseEvent, taskId: number) => {
+    e.stopPropagation()
+    if (confirm('Are you sure you want to delete this task?')) {
+      try {
+        await deleteTask(taskId)
+        loadTasks()
+      } catch (error) {
+        console.error('Failed to delete task:', error)
+      }
+    }
   }
 
   const handleJiraImported = () => {
@@ -92,79 +155,56 @@ export default function TasksPage() {
     loadTasks()
   }
 
-  const TaskCard = ({ task }: { task: Task }) => (
-    <div className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-blue-500">
-      <div className="flex justify-between items-start mb-3">
-        <h3 className="font-semibold text-gray-900 text-sm">{task.title}</h3>
-        <div className="flex space-x-2">
-          <select 
-            value={task.status}
-            className="text-xs border border-gray-300 rounded px-2 py-1"
-          >
-            <option value="TODO">To Do</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="COMPLETED">Completed</option>
-          </select>
-          <button className="text-red-500 hover:text-red-700 text-xs">🗑️</button>
-        </div>
-      </div>
-      
-      {task.description && (
-        <p className="text-gray-600 text-xs mb-3 line-clamp-2">{task.description}</p>
-      )}
-      
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <span className={`px-2 py-1 text-xs rounded-full ${
-            task.status === 'TODO' ? 'bg-yellow-100 text-yellow-800' :
-            task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
-            'bg-green-100 text-green-800'
-          }`}>
-            {task.status.replace('_', ' ')}
-          </span>
-          <span className={`px-2 py-1 text-xs rounded-full ${
-            task.priority === 'HIGH' ? 'bg-red-100 text-red-800' :
-            task.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
-            'bg-green-100 text-green-800'
-          }`}>
-            {task.priority}
-          </span>
-        </div>
-        {task.assignedTo && (
-          <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-            <span className="text-xs text-blue-600 font-semibold">
-              {task.assignedTo.split(' ').map(n => n[0]).join('')}
-            </span>
-          </div>
-        )}
-      </div>
-    </div>
-  )
+  interface BoardViewProps {
+    groupedTasks: Record<string, Task[]>;
+    onEdit: (task: Task) => void;
+    onDelete: (e: React.MouseEvent, taskId: number) => void;
+    onStatusChange: (task: Task, newStatus: string) => void;
+  }
 
-  const BoardView = ({ groupedTasks }: { groupedTasks: Record<string, Task[]> }) => (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {Object.entries(groupedTasks).map(([group, tasks]) => (
-        <div key={group} className="bg-gray-100 p-4 rounded-lg">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center justify-between">
-            {group}
-            <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs">
-              {tasks.length}
-            </span>
-          </h3>
-          <div className="space-y-3">
-            {tasks.map(task => (
-              <TaskCard key={task.id} task={task} />
-            ))}
+  const BoardView = ({ groupedTasks, onEdit, onDelete, onStatusChange }: BoardViewProps) => {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {Object.entries(groupedTasks).map(([group, tasks]) => (
+          <div key={group} className="bg-gray-100 p-4 rounded-lg">
+            <h3 className="font-semibold text-gray-900 mb-4 flex items-center justify-between">
+              {group}
+              <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs">
+                {tasks.length}
+              </span>
+            </h3>
+            <div className="space-y-3">
+              {tasks.map(task => (
+                <TaskCard 
+                  key={task.id} 
+                  task={task} 
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onStatusChange={onStatusChange}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
-  )
+        ))}
+      </div>
+    );
+  }
 
-  const CardsView = ({ tasks }: { tasks: Task[] }) => (
+  const CardsView = ({ tasks, onEdit, onDelete, onStatusChange }: { 
+    tasks: Task[];
+    onEdit: (task: Task) => void;
+    onDelete: (e: React.MouseEvent, taskId: number) => void;
+    onStatusChange: (task: Task, newStatus: string) => void;
+  }) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {tasks.map(task => (
-        <TaskCard key={task.id} task={task} />
+        <TaskCard 
+          key={task.id} 
+          task={task} 
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onStatusChange={onStatusChange}
+        />
       ))}
     </div>
   )
@@ -180,7 +220,7 @@ export default function TasksPage() {
   const groupedTasks = groupTasks(filteredTasks)
 
   return (
-    <div>
+    <div className="container mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">📋 Tasks</h1>
@@ -188,42 +228,40 @@ export default function TasksPage() {
         </div>
         <div className="flex space-x-3">
           <button
-            onClick={() => setShowJiraImport(true)}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+            onClick={handleNewTask}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
           >
-            <span>📥</span><span>Import JIRA</span>
-          </button>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-          >
-            <span>➕</span><span>New Task</span>
+            <span>+</span>
+            <span>New Task</span>
           </button>
         </div>
       </div>
 
-      {/* Filters and Controls */}
       <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search */}
           <div>
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
             <input
               type="text"
+              id="search"
               placeholder="Search tasks..."
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
             />
           </div>
 
           {/* Status Filter */}
           <div>
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
+              id="status"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
             >
-              <option value="all">All Status</option>
+              <option value="all">All Statuses</option>
               <option value="TODO">To Do</option>
               <option value="IN_PROGRESS">In Progress</option>
               <option value="COMPLETED">Completed</option>
@@ -232,79 +270,115 @@ export default function TasksPage() {
 
           {/* Priority Filter */}
           <div>
+            <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
             <select
+              id="priority"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
             >
-              <option value="all">All Priority</option>
-              <option value="HIGH">High</option>
-              <option value="MEDIUM">Medium</option>
+              <option value="all">All Priorities</option>
               <option value="LOW">Low</option>
-            </select>
-          </div>
-
-          {/* Group By */}
-          <div>
-            <select
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value as any)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-            >
-              <option value="none">No Grouping</option>
-              <option value="status">Group by Status</option>
-              <option value="priority">Group by Priority</option>
-              <option value="assignee">Group by Assignee</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
             </select>
           </div>
 
           {/* View Layout */}
-          <div className="flex space-x-1">
-            <button
-              onClick={() => setViewLayout('list')}
-              className={`px-3 py-2 rounded text-sm ${viewLayout === 'list' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-            >
-              📋
-            </button>
-            <button
-              onClick={() => setViewLayout('cards')}
-              className={`px-3 py-2 rounded text-sm ${viewLayout === 'cards' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-            >
-              🃏
-            </button>
-            <button
-              onClick={() => setViewLayout('board')}
-              className={`px-3 py-2 rounded text-sm ${viewLayout === 'board' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-            >
-              📊
-            </button>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">View</label>
+            <div className="flex border border-gray-300 rounded-md overflow-hidden">
+              <button
+                className={`flex-1 py-2 px-3 text-sm transition-colors ${viewLayout === 'list' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                onClick={() => setViewLayout('list')}
+              >
+                List
+              </button>
+              <button
+                className={`flex-1 py-2 px-3 text-sm transition-colors ${viewLayout === 'cards' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                onClick={() => setViewLayout('cards')}
+              >
+                Cards
+              </button>
+              <button
+                className={`flex-1 py-2 px-3 text-sm transition-colors ${viewLayout === 'board' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                onClick={() => setViewLayout('board')}
+              >
+                Board
+              </button>
+            </div>
           </div>
+        </div>
 
-          {/* Results Count */}
-          <div className="flex items-center text-sm text-gray-600">
-            {filteredTasks.length} of {tasks.length} tasks
-          </div>
+        {/* Results Count */}
+        <div className="flex items-center text-sm text-gray-600 mt-4">
+          {filteredTasks.length} of {tasks.length} tasks
         </div>
       </div>
 
       {/* Task Views */}
-      {viewLayout === 'list' && <TaskList tasks={filteredTasks} onTaskUpdate={loadTasks} />}
-      {viewLayout === 'cards' && <CardsView tasks={filteredTasks} />}
-      {viewLayout === 'board' && <BoardView groupedTasks={groupedTasks} />}
-
-      {filteredTasks.length === 0 && (
-        <div className="text-center py-12">
+      {filteredTasks.length > 0 ? (
+        <div className="mt-6">
+          {viewLayout === 'list' && (
+            <TaskList 
+              tasks={filteredTasks} 
+              onEdit={handleEditTask} 
+              onDelete={handleDeleteTask} 
+              onStatusChange={handleStatusChange} 
+            />
+          )}
+          {viewLayout === 'board' && (
+            <BoardView 
+              groupedTasks={groupedTasks} 
+              onEdit={handleEditTask}
+              onDelete={handleDeleteTask}
+              onStatusChange={handleStatusChange}
+            />
+          )}
+          {viewLayout === 'cards' && (
+            <CardsView 
+              tasks={filteredTasks}
+              onEdit={handleEditTask}
+              onDelete={handleDeleteTask}
+              onStatusChange={handleStatusChange}
+            />
+          )}
+        </div>
+      ) : !loading ? (
+        <div className="text-center py-12 bg-white rounded-lg shadow">
           <span className="text-6xl mb-4 block">📋</span>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks found</h3>
-          <p className="text-gray-600">Try adjusting your filters or create a new task</p>
+          <p className="text-gray-600">Try adjusting your filters or create a new task to get started!</p>
         </div>
-      )}
+      ) : null}
 
       {showForm && (
-        <TaskForm
-          onClose={() => setShowForm(false)}
-          onTaskCreated={handleTaskCreated}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">
+                  {editingTask ? 'Edit Task' : 'New Task'}
+                </h2>
+                <button
+                  onClick={handleCloseModal}
+                  className="text-gray-400 hover:text-gray-500 transition-colors"
+                >
+                  <span className="sr-only">Close</span>
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <TaskForm 
+                task={editingTask}
+                projects={projects}
+                onClose={handleCloseModal}
+                onTaskCreated={handleTaskSaved}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       {showJiraImport && (
@@ -315,4 +389,3 @@ export default function TasksPage() {
       )}
     </div>
   )
-}

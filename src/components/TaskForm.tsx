@@ -1,19 +1,23 @@
 import { useState } from 'react'
-import { createTask } from '../api'
+import { createTask, updateTask } from '../services'
+import { Task, Project } from '../types'
 
 interface TaskFormProps {
+  task?: Task | null
+  projects: Project[]
   onClose: () => void
   onTaskCreated: () => void
 }
 
-export default function TaskForm({ onClose, onTaskCreated }: TaskFormProps) {
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    priority: 'MEDIUM',
-    assignedTo: '',
-    dueDate: ''
-  })
+export default function TaskForm({ task, projects, onClose, onTaskCreated }: TaskFormProps) {
+  const [formData, setFormData] = useState(() => ({
+    title: task?.title || '',
+    description: task?.description || '',
+    priority: task?.priority || 'MEDIUM',
+    assignedTo: task?.assignedTo || '',
+    dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+    projectId: task?.project?.id ? String(task.project.id) : ''
+  }))
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,14 +25,25 @@ export default function TaskForm({ onClose, onTaskCreated }: TaskFormProps) {
     setLoading(true)
 
     try {
-      await createTask({
-        ...formData,
-        status: 'TODO',
-        dueDate: formData.dueDate || null
-      })
+      const taskData = {
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority,
+        assignedTo: formData.assignedTo,
+        dueDate: formData.dueDate || null,
+        projectId: formData.projectId ? Number(formData.projectId) : null,
+        status: task?.status || 'TODO' // Preserve existing status or default to 'TODO'
+      }
+
+      if (task) {
+        await updateTask(task.id, taskData)
+      } else {
+        await createTask(taskData)
+      }
+      
       onTaskCreated()
     } catch (error) {
-      console.error('Failed to create task:', error)
+      console.error(`Failed to ${task ? 'update' : 'create'} task:`, error)
     } finally {
       setLoading(false)
     }
@@ -45,7 +60,9 @@ export default function TaskForm({ onClose, onTaskCreated }: TaskFormProps) {
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Create New Task</h2>
+          <h2 className="text-lg font-medium text-gray-900">
+            {task ? 'Edit Task' : 'Create New Task'}
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             ✕
           </button>
@@ -89,15 +106,34 @@ export default function TaskForm({ onClose, onTaskCreated }: TaskFormProps) {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
-            <input
-              type="text"
-              name="assignedTo"
-              value={formData.assignedTo}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
-            />
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+              <input
+                type="text"
+                name="assignedTo"
+                value={formData.assignedTo}
+                onChange={handleChange}
+                className="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="Assignee email or name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
+              <select
+                name="projectId"
+                value={formData.projectId}
+                onChange={handleChange}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="">Select a project</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>
@@ -124,7 +160,7 @@ export default function TaskForm({ onClose, onTaskCreated }: TaskFormProps) {
               disabled={loading}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create Task'}
+              {loading ? (task ? 'Updating...' : 'Creating...') : (task ? 'Update Task' : 'Create Task')}
             </button>
           </div>
         </form>
