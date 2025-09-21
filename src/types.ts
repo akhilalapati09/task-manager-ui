@@ -5,7 +5,7 @@ export interface Task {
   priority: 'LOW' | 'MEDIUM' | 'HIGH'
   status: 'TODO' | 'IN_PROGRESS' | 'COMPLETED'
   dueDate?: string | null
-  assignedTo?: string
+  teamMember?: TeamMember
   project?: Project
   createdAt: string
   updatedAt: string

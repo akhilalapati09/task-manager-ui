@@ -4,11 +4,12 @@ import TaskForm from './TaskForm'
 import JiraImport from './JiraImport'
 import TaskCard from './TaskCard'
 import { Task, Project } from '../types'
-import { getTasks, updateTask, deleteTask, getProjects } from '../services'
+import { getTasks, updateTask, deleteTask, getProjects, getTeamMembers } from '../services'
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [projects, setProjects] = useState<Project[]>([])
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -18,15 +19,15 @@ export default function TasksPage() {
   const [error, setError] = useState<string | null>(null)
   
   // Filters and views
-  const [groupBy, setGroupBy] = useState<'none' | 'status' | 'priority' | 'assignee'>('none')
+  const [groupBy, setGroupBy] = useState<'none' | 'status' | 'priority' | 'assignee'>('assignee')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterPriority, setFilterPriority] = useState<string>('all')
-  const [viewLayout, setViewLayout] = useState<'list' | 'cards' | 'board'>('cards')
+  const [viewLayout, setViewLayout] = useState<'list' | 'cards' | 'board'>('board')
   const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     const loadData = async () => {
-      await Promise.all([loadTasks(), loadProjects()])
+      await Promise.all([loadTasks(), loadProjects(), loadTeamMembers()])
     }
     loadData()
   }, [])
@@ -54,6 +55,17 @@ export default function TasksPage() {
       setLoading(false)
     }
   }
+
+  const loadTeamMembers = async () => {
+      try {
+        const teamMembersData = await getTeamMembers()
+        setTeamMembers(teamMembersData)
+      } catch (error) {
+        console.error('Failed to team members:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
 
   const applyFilters = () => {
     let filtered = tasks
@@ -228,6 +240,12 @@ export default function TasksPage() {
         </div>
         <div className="flex space-x-3">
           <button
+              onClick={() => setShowJiraImport(true)}
+              className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+            >
+              <span>📥</span><span>Import JIRA</span>
+            </button>
+          <button
             onClick={handleNewTask}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
           >
@@ -238,7 +256,7 @@ export default function TasksPage() {
       </div>
 
       <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* Search */}
           <div>
             <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
@@ -292,21 +310,37 @@ export default function TasksPage() {
                 className={`flex-1 py-2 px-3 text-sm transition-colors ${viewLayout === 'list' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                 onClick={() => setViewLayout('list')}
               >
-                List
+                📋 List
               </button>
               <button
                 className={`flex-1 py-2 px-3 text-sm transition-colors ${viewLayout === 'cards' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                 onClick={() => setViewLayout('cards')}
               >
-                Cards
+                🃏 Cards
               </button>
               <button
                 className={`flex-1 py-2 px-3 text-sm transition-colors ${viewLayout === 'board' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                 onClick={() => setViewLayout('board')}
               >
-                Board
+                📊 Board
               </button>
             </div>
+          </div>
+
+          {/* Group By */}
+          <div>
+            <label htmlFor="groupBy" className="block text-sm font-medium text-gray-700 mb-1">Group By</label>
+            <select
+              id="groupBy"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+              value={groupBy}
+              onChange={(e) => setGroupBy(e.target.value as 'none' | 'status' | 'priority' | 'assignee')}
+            >
+              <option value="none">No Grouping</option>
+              <option value="status">Status</option>
+              <option value="priority">Priority</option>
+              <option value="assignee">Assignee</option>
+            </select>
           </div>
         </div>
 
@@ -321,7 +355,7 @@ export default function TasksPage() {
         <div className="mt-6">
           {viewLayout === 'list' && (
             <TaskList 
-              tasks={filteredTasks} 
+              tasks={groupBy === 'none' ? filteredTasks : Object.values(groupedTasks).flat()}
               onEdit={handleEditTask} 
               onDelete={handleDeleteTask} 
               onStatusChange={handleStatusChange} 
@@ -337,7 +371,7 @@ export default function TasksPage() {
           )}
           {viewLayout === 'cards' && (
             <CardsView 
-              tasks={filteredTasks}
+              tasks={groupBy === 'none' ? filteredTasks : Object.values(groupedTasks).flat()}
               onEdit={handleEditTask}
               onDelete={handleDeleteTask}
               onStatusChange={handleStatusChange}
@@ -355,28 +389,13 @@ export default function TasksPage() {
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">
-                  {editingTask ? 'Edit Task' : 'New Task'}
-                </h2>
-                <button
-                  onClick={handleCloseModal}
-                  className="text-gray-400 hover:text-gray-500 transition-colors"
-                >
-                  <span className="sr-only">Close</span>
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <TaskForm 
+              <TaskForm
                 task={editingTask}
                 projects={projects}
+                teamMembers={teamMembers}
                 onClose={handleCloseModal}
                 onTaskCreated={handleTaskSaved}
               />
-            </div>
           </div>
         </div>
       )}
@@ -388,4 +407,5 @@ export default function TasksPage() {
         />
       )}
     </div>
-  )
+    )
+}

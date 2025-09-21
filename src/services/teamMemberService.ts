@@ -33,7 +33,7 @@ export const getTeamMembers = async (): Promise<TeamMember[]> => {
 };
 
 export const updateTeamMember = async (id: number, updates: Partial<Omit<TeamMember, 'id' | 'createdAt' | 'updatedAt'>>): Promise<TeamMember> => {
-  const response = await api.patch(`${SERVICE_BASE_URL}/${id}`, updates);
+  const response = await api.put(`${SERVICE_BASE_URL}/${id}`, updates);
   return response.data;
 };
 

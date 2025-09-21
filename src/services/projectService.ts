@@ -22,7 +22,7 @@ export const createProject = async (project: Omit<Project, 'id' | 'createdAt' | 
 };
 
 export const updateProject = async (id: number, updates: Partial<Omit<Project, 'id' | 'createdAt' | 'tasks'>>): Promise<Project> => {
-  const response = await api.patch(`${SERVICE_BASE_URL}/${id}`, updates);
+  const response = await api.put(`${SERVICE_BASE_URL}/${id}`, updates);
   return response.data;
 };
 

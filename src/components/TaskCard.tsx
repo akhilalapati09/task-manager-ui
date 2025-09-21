@@ -15,9 +15,27 @@ export default function TaskCard({ task, onEdit, onDelete, onStatusChange }: Tas
     }
   };
 
+  const getStatusColor = (status: string) => {
+    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && status !== 'COMPLETED';
+    
+    if (isOverdue) {
+      return 'border-red-500';
+    }
+
+    switch (status) {
+      case 'IN_PROGRESS':
+        return 'border-orange-500';
+      case 'COMPLETED':
+        return 'border-green-500';
+      case 'TODO':
+      default:
+        return 'border-blue-500';
+    }
+  };
+
   return (
     <div 
-      className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-blue-500 cursor-pointer"
+      className={`bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 ${getStatusColor(task.status)} cursor-pointer`}
       onClick={handleCardClick}
     >
       <div className="flex justify-between items-start mb-3">
@@ -63,7 +81,7 @@ export default function TaskCard({ task, onEdit, onDelete, onStatusChange }: Tas
         {task.assignedTo && (
           <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
             <span className="text-xs text-blue-600 font-semibold">
-              {task.assignedTo.split(' ').map(n => n[0]).join('')}
+              {task.teamMember.name.split(' ').map(n => n[0]).join('')}
             </span>
           </div>
         )}

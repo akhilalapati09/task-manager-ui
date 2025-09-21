@@ -27,7 +27,7 @@ export const updateTaskStatus = async (id: number, status: string): Promise<Task
 };
 
 export const updateTask = async (id: number, updates: Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Task> => {
-  const response = await api.patch(`${SERVICE_BASE_URL}/${id}`, updates);
+  const response = await api.put(`${SERVICE_BASE_URL}/${id}`, updates);
   return response.data;
 };
 

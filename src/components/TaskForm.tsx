@@ -5,18 +5,26 @@ import { Task, Project } from '../types'
 interface TaskFormProps {
   task?: Task | null
   projects: Project[]
+  teamMembers: TeamMember[]
   onClose: () => void
   onTaskCreated: () => void
 }
 
-export default function TaskForm({ task, projects, onClose, onTaskCreated }: TaskFormProps) {
+export default function TaskForm({ task, projects, teamMembers, onClose, onTaskCreated }: TaskFormProps) {
+  // Function to get tomorrow's date in YYYY-MM-DD format
+  const getTomorrowDate = () => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    return tomorrow.toISOString().split('T')[0]
+  }
+
   const [formData, setFormData] = useState(() => ({
     title: task?.title || '',
     description: task?.description || '',
     priority: task?.priority || 'MEDIUM',
-    assignedTo: task?.assignedTo || '',
-    dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
-    projectId: task?.project?.id ? String(task.project.id) : ''
+    dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : getTomorrowDate(),
+    projectId: task?.project?.id ? String(task.project.id) : '',
+    teamMemberId: task?.teamMember?.id ? String(task.teamMember.id) : '',
   }))
   const [loading, setLoading] = useState(false)
 
@@ -29,9 +37,9 @@ export default function TaskForm({ task, projects, onClose, onTaskCreated }: Tas
         title: formData.title,
         description: formData.description,
         priority: formData.priority,
-        assignedTo: formData.assignedTo,
         dueDate: formData.dueDate || null,
         projectId: formData.projectId ? Number(formData.projectId) : null,
+        teamMemberId: formData.teamMemberId ? Number(formData.teamMemberId) : null,
         status: task?.status || 'TODO' // Preserve existing status or default to 'TODO'
       }
 
@@ -109,14 +117,19 @@ export default function TaskForm({ task, projects, onClose, onTaskCreated }: Tas
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
-              <input
-                type="text"
-                name="assignedTo"
-                value={formData.assignedTo}
+                <select
+                name="teamMemberId"
+                value={formData.teamMemberId}
                 onChange={handleChange}
                 className="w-full p-2 border border-gray-300 rounded-md"
-                placeholder="Assignee email or name"
-              />
+                >
+              <option value="">Select a Assignee</option>
+                  {teamMembers.map((tm) => (
+                    <option key={tm.id} value={tm.id}>
+                      {tm.name}
+                    </option>
+                  ))}
+                </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
