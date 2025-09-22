@@ -302,45 +302,63 @@ export default function TasksPage() {
             </select>
           </div>
 
-          {/* View Layout */}
+          {/* Group By */}
+            <div>
+              <label htmlFor="groupBy" className="block text-sm font-medium text-gray-700 mb-1">Group By</label>
+              <select
+                id="groupBy"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                value={groupBy}
+                onChange={(e) => setGroupBy(e.target.value as 'none' | 'status' | 'priority' | 'assignee')}
+              >
+                <option value="none">No Grouping</option>
+                <option value="status">Status</option>
+                <option value="priority">Priority</option>
+                <option value="assignee">Assignee</option>
+              </select>
+            </div>
+
+          {/* View Layout - Compact */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">View</label>
-            <div className="flex border border-gray-300 rounded-md overflow-hidden">
+            <div className="flex h-9 items-stretch rounded-md shadow-sm" role="group">
               <button
-                className={`flex-1 py-2 px-3 text-sm transition-colors ${viewLayout === 'list' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                type="button"
+                className={`flex items-center justify-center px-3 text-sm font-medium border rounded-xl ${
+                  viewLayout === 'list' 
+                    ? 'bg-blue-600 text-white border-blue-600 w-40'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
                 onClick={() => setViewLayout('list')}
+                title="List View"
               >
-                📋 List
+                📋
               </button>
               <button
-                className={`flex-1 py-2 px-3 text-sm transition-colors ${viewLayout === 'cards' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                type="button"
+                className={`flex items-center justify-center px-3 text-sm font-medium border rounded-xl ${
+                  viewLayout === 'cards' 
+                    ? 'bg-blue-600 text-white border-blue-600 w-40'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
                 onClick={() => setViewLayout('cards')}
+                title="Card View"
               >
-                🃏 Cards
+                🗂️
               </button>
               <button
-                className={`flex-1 py-2 px-3 text-sm transition-colors ${viewLayout === 'board' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                type="button"
+                className={`flex items-center justify-center px-3 text-sm font-medium border rounded-xl ${
+                  viewLayout === 'board'
+                    ? 'bg-blue-600 text-white border-blue-600 w-40'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
                 onClick={() => setViewLayout('board')}
+                title="Board"
               >
-                📊 Board
+                📊
               </button>
             </div>
-          </div>
-
-          {/* Group By */}
-          <div>
-            <label htmlFor="groupBy" className="block text-sm font-medium text-gray-700 mb-1">Group By</label>
-            <select
-              id="groupBy"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value as 'none' | 'status' | 'priority' | 'assignee')}
-            >
-              <option value="none">No Grouping</option>
-              <option value="status">Status</option>
-              <option value="priority">Priority</option>
-              <option value="assignee">Assignee</option>
-            </select>
           </div>
         </div>
 

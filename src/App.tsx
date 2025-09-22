@@ -21,7 +21,10 @@ function Navigation() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-8">
-            <h1 className="text-xl font-bold text-gray-900">🚀 Task Manager</h1>
+            <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+              <img width="24" height="24" src="/icons/task-management.png" alt="Task Manager" className="w-6 h-6" />
+              <span>Task Manager</span>
+            </h1>
             <div className="flex space-x-4">
               {navItems.map((item) => (
                 <Link
